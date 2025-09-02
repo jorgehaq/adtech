@@ -6,14 +6,15 @@ authors = [
     {name = "Jorge Alvarez",email = "44485505+jorgehaq@users.noreply.github.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "django (>=5.2.5,<6.0.0)",
     "djangorestframework (>=3.16.1,<4.0.0)",
     "python-decouple (>=3.8,<4.0)",
     "mysqlclient (>=2.2.7,<3.0.0)",
     "redis (>=6.4.0,<7.0.0)",
-    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)"
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
+    "strawberry-graphql[django] (>=0.281.0,<0.282.0)"
 ]
 
 
