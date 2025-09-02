@@ -1,8 +1,10 @@
 from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
 from .models import Campaign, Ad
 from .serializers import CampaignSerializer, AdSerializer
 
 class CampaignViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]  # Agregar esta línea
     queryset = Campaign.objects.all()
     serializer_class = CampaignSerializer
 
