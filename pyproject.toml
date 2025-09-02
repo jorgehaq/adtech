@@ -14,7 +14,7 @@ dependencies = [
     "mysqlclient (>=2.2.7,<3.0.0)",
     "redis (>=6.4.0,<7.0.0)",
     "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
-    "strawberry-graphql[django] (>=0.281.0,<0.282.0)"
+    "strawberry-graphql-django (>=0.65.1,<0.66.0)",
 ]
 
 

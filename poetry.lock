@@ -566,8 +566,6 @@ files = [
 ]
 
 [package.dependencies]
-asgiref = {version = ">=3.2,<4.0", optional = true, markers = "extra == \"django\""}
-Django = {version = ">=3.2", optional = true, markers = "extra == \"django\""}
 graphql-core = ">=3.2.0,<3.4.0"
 lia-web = ">=0.2.1"
 packaging = ">=23"
@@ -591,6 +589,27 @@ pydantic = ["pydantic (>1.6.1)"]
 pyinstrument = ["pyinstrument (>=4.0.0)"]
 quart = ["quart (>=0.19.3)"]
 sanic = ["sanic (>=20.12.2)"]
+
+[[package]]
+name = "strawberry-graphql-django"
+version = "0.65.1"
+description = "Strawberry GraphQL Django extension"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "strawberry_graphql_django-0.65.1-py3-none-any.whl", hash = "sha256:e0a69af97c50deb07197641cd0b7320e25b5a3148a05ae6006d1bf5103530e85"},
+    {file = "strawberry_graphql_django-0.65.1.tar.gz", hash = "sha256:de312b77d83ab475b875f76f44161e8c5d9d284f349df61cebc83b4362b57a17"},
+]
+
+[package.dependencies]
+asgiref = ">=3.8"
+django = ">=4.2"
+strawberry-graphql = ">=0.276.2"
+
+[package.extras]
+debug-toolbar = ["django-debug-toolbar (>=3.4)"]
+enum = ["django-choices-field (>=2.2.2)"]
 
 [[package]]
 name = "tomli"
@@ -663,4 +682,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "b5784b956be1650e6e3c6e69440939d6877fe2432b9ffafa6e304c9c00d1e8a7"
+content-hash = "34f42c86a89a87eed7191ae3dd489b3ddccff32b6bbf5342f21d4cd5ddb1fe2c"

@@ -18,9 +18,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.urls import include
+from strawberry.django.views import GraphQLView
+from core.graphql.schema import schema
+from django.views.decorators.csrf import csrf_exempt
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.authentication.urls")),
     path("", include("apps.campaigns.urls")),
+    path('graphql/', csrf_exempt(GraphQLView.as_view(schema=schema))),
 ]

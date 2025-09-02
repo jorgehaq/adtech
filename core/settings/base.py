@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "apps.campaigns",
     "apps.authentication",
+    "strawberry.django"
 ]
 # Django REST Framework configuration with Simple JWT
 REST_FRAMEWORK = {
@@ -71,6 +72,11 @@ MIDDLEWARE = [
     "apps.authentication.middleware.TenantIsolationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8070',
+    'http://127.0.0.1:8070',
 ]
 
 ROOT_URLCONF = "core.urls"
