@@ -6,6 +6,7 @@ from .serializers import CampaignSerializer, AdSerializer
 class CampaignViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = CampaignSerializer
+    queryset = Campaign.objects.all() 
 
     def get_queryset(self):
         return Campaign.objects.filter(tenant_id=self.request.user.tenant_id)
@@ -16,6 +17,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
 class AdViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = AdSerializer
+    queryset = Ad.objects.all() 
 
     def get_queryset(self):
         return Ad.objects.filter(tenant_id=self.request.user.tenant_id)
