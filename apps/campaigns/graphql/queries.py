@@ -7,8 +7,9 @@ from .types import CampaignType, AdType
 class CampaignQueries:
     
     @strawberry.field
-    def campaigns(self) -> List[CampaignType]:
-        return Campaign.objects.all()
+    def campaigns(self, info) -> List[CampaignType]:
+        tenant_id = info.context.request.user.tenant_id
+        return Campaign.objects.filter(tenant_id=tenant_id)
     
     @strawberry.field
     def campaign(self, id: int) -> CampaignType:

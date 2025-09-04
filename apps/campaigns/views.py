@@ -4,22 +4,21 @@ from .models import Campaign, Ad
 from .serializers import CampaignSerializer, AdSerializer
 
 class CampaignViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]  # Agregar esta línea
-    queryset = Campaign.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = CampaignSerializer
 
-    def create(self, request, *args, **kwargs):
-        # Ejemplo de error controlado
-        if request.data.get("budget") == "0":  # example condition
-            raise ValidationError("Presupuesto no puede ser cero")
-        return super().create(request, *args, **kwargs)
+    def get_queryset(self):
+        return Campaign.objects.filter(tenant_id=self.request.user.tenant_id)
 
-    def get_object(self):
-        try:
-            return super().get_object()
-        except Exception:
-            raise NotFound("Campaña no encontrada")
+    def perform_create(self, serializer):
+        serializer.save(tenant_id=self.request.user.tenant_id)
 
 class AdViewSet(viewsets.ModelViewSet):
-    queryset = Ad.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = AdSerializer
+
+    def get_queryset(self):
+        return Ad.objects.filter(tenant_id=self.request.user.tenant_id)
+
+    def perform_create(self, serializer):
+        serializer.save(tenant_id=self.request.user.tenant_id)

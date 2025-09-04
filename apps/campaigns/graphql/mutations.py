@@ -23,9 +23,10 @@ class AdInput:
 class CampaignMutations:
     
     @strawberry.mutation
-    def create_campaign(self, input: CampaignInput) -> CampaignType:
+    def create_campaign(self, info, input: CampaignInput) -> CampaignType:
+        tenant_id = info.context.request.user.tenant_id
         campaign = Campaign.objects.create(
-            tenant_id=input.tenant_id,
+            tenant_id=tenant_id,  # Forzar tenant
             name=input.name,
             budget=input.budget,
             status=input.status,
