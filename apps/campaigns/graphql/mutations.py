@@ -1,5 +1,6 @@
 import strawberry
 from typing import Optional
+from django.core.exceptions import ValidationError
 from apps.campaigns.models import Campaign, Ad
 from .types import CampaignType, AdType
 
@@ -25,6 +26,18 @@ class CampaignMutations:
     @strawberry.mutation
     def create_campaign(self, info, input: CampaignInput) -> CampaignType:
         tenant_id = info.context.request.user.tenant_id
+        
+        # Validate unique campaign name per tenant
+        existing_campaign = Campaign.objects.filter(
+            tenant_id=tenant_id, 
+            name=input.name
+        ).first()
+        
+        if existing_campaign:
+            raise ValidationError(
+                f"A campaign with name '{input.name}' already exists for this tenant."
+            )
+        
         campaign = Campaign.objects.create(
             tenant_id=tenant_id,  # Forzar tenant
             name=input.name,
