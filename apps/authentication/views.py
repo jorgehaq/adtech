@@ -3,8 +3,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import extend_schema
 from .serializers import UserSerializer, LoginSerializer
 
+@extend_schema(
+    request=UserSerializer,
+    responses={200: 'JWT tokens', 400: 'Validation errors'}
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
@@ -18,6 +23,10 @@ def register(request):
         })
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@extend_schema(
+    request=LoginSerializer,
+    responses={200: 'JWT tokens'}
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
