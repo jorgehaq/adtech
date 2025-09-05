@@ -37,3 +37,10 @@ def audit_trail(request, campaign_id):
 
 
 
+from asgiref.sync import sync_to_async
+
+@api_view(['GET'])
+async def async_analytics(request):
+    data = await sync_to_async(AnalyticsRepository.cohort_analysis)(request.user.tenant_id)
+    return Response(data)
+
