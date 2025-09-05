@@ -18,3 +18,13 @@ class AdEvent(models.Model):
     payload = models.JSONField()
     timestamp = models.DateTimeField(auto_now_add=True)
     sequence_number = models.BigIntegerField()
+
+
+class AdvertiserAccount(models.Model):
+    tenant_id = models.IntegerField(db_index=True)
+    name = models.CharField(max_length=100)
+    
+class Creative(models.Model):
+    tenant_id = models.IntegerField(db_index=True)
+    name = models.CharField(max_length=100)
+    asset_url = models.URLField()

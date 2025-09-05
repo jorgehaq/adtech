@@ -38,3 +38,18 @@ class AnalyticsRepository:
         with connection.cursor() as cursor:
             cursor.execute(sql, [tenant_id])
             return cursor.fetchall()
+        
+
+    @staticmethod
+    def campaign_performance_hourly(tenant_id):
+        sql = """
+        SELECT campaign_id,
+               DATE_FORMAT(timestamp, '%Y-%m-%d %H:00:00') as hour,
+               COUNT(*) as impressions,
+               SUM(cost) as spend,
+               AVG(cost) as avg_cost,
+               ROW_NUMBER() OVER (PARTITION BY campaign_id ORDER BY COUNT(*) DESC) as rank
+        FROM campaigns_impression 
+        WHERE tenant_id = %s
+        GROUP BY campaign_id, DATE_FORMAT(timestamp, '%Y-%m-%d %H:00:00')
+        """
