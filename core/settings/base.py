@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "apps.campaigns",
     "apps.authentication",
-    "strawberry.django"
+    "strawberry.django",
+    "apps.analytics",
 ]
 # Django REST Framework configuration with Simple JWT
 REST_FRAMEWORK = {
