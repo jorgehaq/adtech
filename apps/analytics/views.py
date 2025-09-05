@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .repositories import AnalyticsRepository
 from apps.analytics.models import AdEvent
+from asgiref.sync import sync_to_async
 
 @api_view(['GET'])
 def cohort_analysis(request):
@@ -35,12 +36,15 @@ def audit_trail(request, campaign_id):
     
     return Response(data)
 
-
-
-from asgiref.sync import sync_to_async
-
 @api_view(['GET'])
 async def async_analytics(request):
     data = await sync_to_async(AnalyticsRepository.cohort_analysis)(request.user.tenant_id)
     return Response(data)
 
+
+# apps/analytics/views.py
+@api_view(['POST'])
+def trigger_metrics(request):
+    from tasks.analytics import calculate_daily_metrics
+    result = calculate_daily_metrics.delay(request.user.tenant_id)
+    return Response({'task_id': result.id})
