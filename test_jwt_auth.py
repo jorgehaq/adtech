@@ -11,7 +11,7 @@ from rest_framework import status
 from apps.authentication.models import User
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.dev')
 django.setup()
 
 class JWTAuthTestCase(APITestCase):

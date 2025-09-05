@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 # Setup Django
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.dev')
 django.setup()
 
 from apps.campaigns.models import Campaign, Ad, Impression
