@@ -19,12 +19,15 @@ class Campaign(models.Model):
     status = models.CharField(max_length=20)  # Quitar db_index
     start_date = models.DateField()  # Quitar db_index
     end_date = models.DateField()
+    advertiser = models.ForeignKey('advertisers.Advertiser', on_delete=models.CASCADE)
 
 class Ad(models.Model):
     tenant_id = models.IntegerField(db_index=True)
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='ads')
     creative_url = models.URLField()
     target_audience = models.CharField(max_length=100)
+    creative = models.ForeignKey('creatives.Creative', on_delete=models.CASCADE)
+    audience = models.ForeignKey('audiences.AudienceSegment', on_delete=models.CASCADE)
 
 class Impression(models.Model):
     class Meta:
