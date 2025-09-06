@@ -27,13 +27,15 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.authentication.urls")),
-    path("api/v1/analytics/", include("apps.analytics.urls")), 
+    path("api/v1/analytics/", include("apps.analytics.urls")),
+    path("api/v1/", include("apps.advertisers.urls")),
+    path("api/v1/", include("apps.creatives.urls")),
+    path("api/v1/", include("apps.audiences.urls")),
+    path("api/v1/", include("apps.bidding.urls")),
+    path("api/v1/", include("apps.billing.urls")),
     path("", include("apps.campaigns.urls")),
-    path('graphql/', csrf_exempt(GraphQLView.as_view(schema=schema, graphiql=True))),
+    path('graphql/', GraphQLView.as_view(schema=schema, graphiql=True)),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
-
-
-
