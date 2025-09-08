@@ -26,4 +26,4 @@ DATABASES = {
     }
 }
 
-CELERY_BROKER_URL = 'redis://dev-redis.gcp.com:6379'
+CELERY_BROKER_URL = 'redis://localhost:6379'

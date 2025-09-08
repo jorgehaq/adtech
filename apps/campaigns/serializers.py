@@ -32,8 +32,30 @@ class CampaignSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f"A campaign with name '{value}' already exists for this tenant."
                 )
-        
         return value
+    
+    def validate_budget(self, value):
+        request = self.context.get('request')
+        if request and hasattr(request.user, 'tenant_id'):
+            advertiser_id = self.initial_data.get('advertiser')
+            if advertiser_id:
+                from apps.advertisers.models import AdvertiserBudget
+                budget = AdvertiserBudget.objects.filter(
+                    advertiser_id=advertiser_id,
+                    tenant_id=request.user.tenant_id
+                ).first()
+                if budget and value > budget.monthly_budget:
+                    raise serializers.ValidationError(
+                        f"Campaign budget cannot exceed advertiser monthly budget: ${budget.monthly_budget}"
+                    )
+        return value
+
+    def validate(self, data):
+        if data['start_date'] >= data['end_date']:
+            raise serializers.ValidationError(
+                "start_date must be before end_date"
+            )
+        return data
 
 class AdSerializer(serializers.ModelSerializer):
     tenant_id = serializers.IntegerField(read_only=True)
