@@ -4,7 +4,9 @@ __pycache__/
 *.pyd
 venv/
 .venv/
-.env*
+.env
+.env.*
+!.env*.example
 .mysql_data/
 redis_data/
 db.sqlite3

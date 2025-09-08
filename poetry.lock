@@ -303,6 +303,25 @@ asgiref = ">=3.6"
 django = ">=4.2"
 
 [[package]]
+name = "django-redis"
+version = "6.0.0"
+description = "Full featured redis cache backend for Django."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_redis-6.0.0-py3-none-any.whl", hash = "sha256:20bf0063a8abee567eb5f77f375143c32810c8700c0674ced34737f8de4e36c0"},
+    {file = "django_redis-6.0.0.tar.gz", hash = "sha256:2d9cb12a20424a4c4dde082c6122f486628bae2d9c2bee4c0126a4de7fda00dd"},
+]
+
+[package.dependencies]
+Django = ">=4.2"
+redis = ">=4.0.2"
+
+[package.extras]
+hiredis = ["redis[hiredis] (>=4.0.2)"]
+
+[[package]]
 name = "djangorestframework"
 version = "3.16.1"
 description = "Web APIs for Django, made easy."
@@ -1360,4 +1379,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "e006563ac852b7d1ccbc74c87352ca7042289613447d82e6dff1ed2aea942b90"
+content-hash = "0b69b7e762e2b56aca04c70411b375698628600f12efff6923cce3f2cbab0be8"
