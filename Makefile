@@ -6,26 +6,53 @@ define LOAD_ENV
    set -a; source $(ENV_FILE); set +a
 endef
 
-.PHONY: up local migrate kill-port celery flower down load-million test restart-celery restart-flower
+# Services management (Docker)
+.PHONY: services services-down services-logs services-restart
 
-up: migrate
-	@$(call LOAD_ENV); PORT=$${PORT:-8070} $(MAKE) kill-port
-	@PORT=5555 $(MAKE) kill-port
-	@$(MAKE) celery &
-	@$(MAKE) flower &
-	@$(MAKE) local
+services:
+	@docker compose up -d
+	@echo "✅ Services started:"
+	@echo "   - MySQL: localhost:3306"
+	@echo "   - Redis: localhost:6379"
+	@echo ""
+	@echo "🚀 Ready for local development:"
+	@echo "   source .venv/bin/activate"
+	@echo "   python manage.py runserver"
+
+services-down:
+	@docker compose down
+
+services-logs:
+	@docker compose logs -f
+
+services-restart:
+	@docker compose restart
+
+# Local Django development
+.PHONY: local migrate shell test dbshell load-million
 
 local:
 	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py runserver 0.0.0.0:$${PORT:-8070}
 
 migrate:
+	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py makemigrations
 	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py migrate
 
-kill-port:
-	@if [ -z "$$PORT" ]; then echo "PORT no definido"; exit 1; fi
-	@echo "Killing processes on port $$PORT..."
-	@pids=$$(lsof -ti tcp:$$PORT || true); if [ -n "$$pids" ]; then kill -9 $$pids; fi
-	@echo "Port $$PORT cleared"
+shell:
+	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py shell
+
+test:
+	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py test
+
+dbshell:
+	@docker compose exec mysql mysql -u root -p
+
+load-million:
+	@echo "Loading 1M test records..."
+	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py load_million_records --records=1000000
+
+# Local Celery (optional)
+.PHONY: celery flower
 
 celery:
 	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; celery -A core worker -l info
@@ -33,22 +60,30 @@ celery:
 flower:
 	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; celery -A core flower --port=5555
 
-load-million:
-	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py load_million_records --records=1000000
+# Development workflow
+.PHONY: up dev flush
 
-test:
-	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py test
+up: services migrate
+	@echo "🎯 Development setup complete!"
+	@echo "   Run: make local (or source .venv/bin/activate && python manage.py runserver)"
 
-restart-celery:
-	@pkill -f "celery -A core worker" || true
-	@$(MAKE) celery
+dev: services
+	@$(MAKE) migrate
+	@$(MAKE) local
 
-restart-flower:
-	@pkill -f "celery -A core flower" || true
-	@$(MAKE) flower
+# Database operations
+flush:
+	@$(call LOAD_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py flush --noinput
 
-down:
-	@pkill -f "celery -A core worker" || true
-	@pkill -f "celery -A core flower" || true
-	@pkill -f "python manage.py runserver" || true
-	@echo "All services stopped"
+# Cleanup
+clean:
+	@docker compose down -v
+	@docker system prune -f
+
+# Health check
+health:
+	@echo "🏥 Services Health Check:"
+	@docker compose ps
+	@echo ""
+	@curl -s http://localhost:3306 > /dev/null && echo "✅ MySQL" || echo "❌ MySQL"
+	@redis-cli ping > /dev/null && echo "✅ Redis" || echo "❌ Redis"
