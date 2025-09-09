@@ -1,0 +1,37 @@
+*   94f32081  (HEAD -> dev) Merge branch 'feature/performance-optimization' into dev (Jorge Alvarez)
+|\  
+| * 77497774  (feature/performance-optimization) feat(performance): restructure load commands and docker config (Jorge Alvarez)
+| * 86a630fe  feat: environment configuration and performance infrastructure (Jorge Alvarez)
+|/  
+* 28523d56  (origin/feature/model-relationships, feature/model-relationships) feat: Switch Celery settings to production environment (Jorge Alvarez)
+* f08d6aad  feat: business validations, FK relationships, campaign status choices (Jorge Alvarez)
+* 9ae43d5a  feat(models): add foreign key relationships between apps (Jorge Alvarez)
+*   a1159f2c  (origin/feature/event-sourcing-endpoints, origin/dev, feature/event-sourcing-endpoints) Merge branch 'dev' into feature/event-sourcing-endpoints (Jorge Alvarez)
+|\  
+| *   1077a182  Merge branch 'feature/event-sourcing-endpoints' into dev (Jorge Alvarez)
+| |\  
+| * | 55fc9b58  feat(endpoints): add REST endpoints for advertisers, creatives, audiences, bidding, billing (Jorge Alvarez)
+* | | e91e7e3b  Merge branch 'feature/rest-endpoints-basic' into feature/event-sourcing-endpoints (Jorge Alvarez)
+|\| | 
+| |/  
+|/|   
+| * 05d6ce94  (origin/feature/rest-endpoints-basic, feature/rest-endpoints-basic) feat(endpoints): add REST endpoints for advertisers, creatives, audiences, bidding, billing (Jorge Alvarez)
+* | 461b64dc  feat(events): implement event sourcing endpoints and metrics rebuild (Jorge Alvarez)
+|/  
+* a6025433  (origin/feature/base-apps-models, feature/base-apps-models) feat(apps): add base apps with enterprise models (Jorge Alvarez)
+* aed8eb0c  (origin/feature/multi-environment-settings, feature/multi-environment-settings) feat(settings): multi-environment configuration (Jorge Alvarez)
+* c61f10c2  (origin/feature/graphql-playground, feature/graphql-playground) add endpoint to call task celery (Jorge Alvarez)
+* ebc4a116  feat: enable GraphQL Playground interface (Jorge Alvarez)
+* 9cd04c6c  (feature/analytics-performance) feat(analytics): implement event sourcing and async tasks (Jorge Alvarez)
+* ebac6ac7  feat(analytics): implement MySQL window functions and CTEs (Jorge Alvarez)
+* 367066fd  (feature/multitenant-isolation) Add test for unique campaign name per tenant (Jorge Alvarez)
+* db1a0953  feat(campaigns): add backend validation for unique campaign names per tenant (Jorge Alvarez)
+* 13d2b5a5  Fix DRF router queryset requirement (Jorge Alvarez)
+* 659eee05  feat(campaigns): implement tenant isolation in DRF and GraphQL (Jorge Alvarez)
+* f0eb1251  (origin/feature/multitenant-isolation) feat(campaigns): add tenant isolation constraints and indexes (Jorge Alvarez)
+* 4b7e32b5  (feature/graphql-setup) Complete GraphQL setup with JWT authentication (Jorge Alvarez)
+* 4661e4ad  Complete GraphQL distributed schema setup (Jorge Alvarez)
+* 95b52b8e  (origin/review/current-state, review/current-state) Update Python version compatibility for strawberry-graphql (Jorge Alvarez)
+* b7e95974  Complete JWT auth and campaing CRUD endpoints (Jorge Alvarez)
+* 37c05237  (origin/main, main) feat: Add project dependencies for initial setup (Jorge Alvarez)
+* 8a48189e  first commit (Jorge Alvarez)

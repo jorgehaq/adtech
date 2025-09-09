@@ -104,3 +104,73 @@ class AnalyticsRepository:
         with connection.cursor() as cursor:
             cursor.execute(sql, [tenant_id, limit])
             return cursor.fetchall()
+        
+    @staticmethod
+    def attribution_analysis(tenant_id, campaign_id=None):
+        """Multi-level CTE for attribution modeling"""
+        sql = """
+        WITH user_journeys AS (
+            SELECT 
+                ci.user_id,
+                ci.timestamp as impression_time,
+                cc.timestamp as click_time,
+                cv.timestamp as conversion_time,
+                cv.conversion_value,
+                ad.campaign_id,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ci.user_id 
+                    ORDER BY ci.timestamp
+                ) as journey_step
+            FROM campaigns_impression ci
+            LEFT JOIN campaigns_ad ad ON ci.ad_id = ad.id
+            LEFT JOIN events_clickevent cc ON cc.impression_id = ci.id
+            LEFT JOIN events_conversionevent cv ON cv.click_id = cc.id
+            WHERE ci.tenant_id = %s
+        ),
+        touch_points AS (
+            SELECT 
+                user_id,
+                campaign_id,
+                COUNT(*) as impressions,
+                COUNT(click_time) as clicks,
+                COUNT(conversion_time) as conversions,
+                SUM(conversion_value) as total_value,
+                MIN(impression_time) as first_touch,
+                MAX(impression_time) as last_touch,
+                DATEDIFF(MAX(impression_time), MIN(impression_time)) as journey_length
+            FROM user_journeys
+            GROUP BY user_id, campaign_id
+        ),
+        attribution_weights AS (
+            SELECT 
+                tp.*,
+                CASE 
+                    WHEN journey_length = 0 THEN 1.0
+                    WHEN journey_step = 1 THEN 0.4  -- First touch
+                    WHEN conversion_time IS NOT NULL THEN 0.4  -- Last touch
+                    ELSE 0.2  -- Middle touches
+                END as attribution_weight
+            FROM touch_points tp
+            JOIN user_journeys uj ON tp.user_id = uj.user_id AND tp.campaign_id = uj.campaign_id
+        )
+        SELECT 
+            campaign_id,
+            COUNT(DISTINCT user_id) as attributed_users,
+            SUM(total_value * attribution_weight) as attributed_revenue,
+            AVG(journey_length) as avg_journey_days,
+            SUM(impressions) as total_impressions,
+            SUM(clicks) as total_clicks,
+            SUM(conversions) as total_conversions
+        FROM attribution_weights
+        GROUP BY campaign_id
+        ORDER BY attributed_revenue DESC
+        """
+        
+        params = [tenant_id]
+        if campaign_id:
+            sql += " HAVING campaign_id = %s"
+            params.append(campaign_id)
+        
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return cursor.fetchall()

@@ -4,15 +4,17 @@ Quick test script for JWT authentication functionality
 """
 import os
 import django
+
+# Setup Django first
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local')
+django.setup()
+
+# Import Django modules after setup
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from apps.authentication.models import User
-
-# Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.dev')
-django.setup()
 
 class JWTAuthTestCase(APITestCase):
     def setUp(self):

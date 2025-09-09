@@ -120,50 +120,65 @@ class Command(BaseCommand):
         self.stdout.write(f'✅ Ensured {len(campaigns)} campaigns and {len(all_ads)} ads')
         return campaigns, all_ads
 
-    def create_impressions_batch(self, ads, total_records, batch_size, days_back, tenant_id):
-        self.stdout.write(f'🚀 Creating {total_records:,} impressions in batches of {batch_size:,}')
-        
-        total_batches = total_records // batch_size
-        base_time = datetime.now() - timedelta(days=days_back)
-        total_created = 0
+def create_impressions_batch(self, ads, total_records, batch_size, days_back, tenant_id):
+    from apps.events.models import ClickEvent
+    
+    self.stdout.write(f'🚀 Creating {total_records:,} impressions in batches of {batch_size:,}')
+    
+    total_batches = total_records // batch_size
+    base_time = datetime.now() - timedelta(days=days_back)
+    total_created = 0
 
-        for batch_num in range(total_batches):
-            impressions_batch = []
+    for batch_num in range(total_batches):
+        impressions_batch = []
+        clicks_to_create = []
 
-            for i in range(batch_size):
-                # Distribute impressions over time period
-                timestamp = base_time + timedelta(
-                    days=random.randint(0, days_back),
-                    hours=random.randint(0, 23),
-                    minutes=random.randint(0, 59)
-                )
+        for i in range(batch_size):
+            timestamp = base_time + timedelta(
+                days=random.randint(0, days_back),
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59)
+            )
 
-                impression = Impression(
-                    tenant_id=tenant_id,
-                    ad=random.choice(ads),
-                    user_id=random.randint(1000, 999999),
-                    cost=round(random.uniform(0.05, 3.0), 4),
-                    timestamp=timestamp
-                )
-                impressions_batch.append(impression)
+            impression = Impression(
+                tenant_id=tenant_id,
+                ad=random.choice(ads),
+                user_id=random.randint(1000, 999999),
+                cost=round(random.uniform(0.05, 3.0), 4),
+                timestamp=timestamp
+            )
+            impressions_batch.append(impression)
+            
+            # 10% de impressions generan clicks
+            if random.random() < 0.1:
+                clicks_to_create.append(impression)
 
-            # Bulk create with transaction
-            try:
-                with transaction.atomic():
-                    Impression.objects.bulk_create(impressions_batch, batch_size=1000)
+        try:
+            with transaction.atomic():
+                created_impressions = Impression.objects.bulk_create(impressions_batch, batch_size=1000)
                 
-                total_created += len(impressions_batch)
-                progress = (batch_num + 1) / total_batches * 100
+                # Crear clicks para las impressions seleccionadas
+                click_events = []
+                for i, impression in enumerate(created_impressions):
+                    if i < len(clicks_to_create):
+                        click_events.append(ClickEvent(
+                            tenant_id=tenant_id,
+                            impression=impression,
+                            timestamp=impression.timestamp + timedelta(seconds=random.randint(1, 300))
+                        ))
                 
-                self.stdout.write(f'Progress: {progress:.1f}% ({total_created:,}/{total_records:,})')
+                if click_events:
+                    ClickEvent.objects.bulk_create(click_events)
                 
-            except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(f'Error in batch {batch_num}: {e}')
-                )
-                continue
+            total_created += len(impressions_batch)
+            progress = (batch_num + 1) / total_batches * 100
+            self.stdout.write(f'Progress: {progress:.1f}% ({total_created:,}/{total_records:,}) - Clicks: {len(click_events)}')
+            
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error in batch {batch_num}: {e}'))
+            continue
 
-        return total_created
+    return total_created
 
     def show_stats(self, tenant_id, total_created):
         total_impressions = Impression.objects.filter(tenant_id=tenant_id).count()

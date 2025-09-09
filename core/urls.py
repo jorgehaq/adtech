@@ -34,9 +34,11 @@ urlpatterns = [
     path("api/v1/", include("apps.audiences.urls")),
     path("api/v1/", include("apps.bidding.urls")),
     path("api/v1/", include("apps.billing.urls")),
+    path("api/v1/realtime/", include("apps.realtime.urls")),
     path("", include("apps.campaigns.urls")),
     path('graphql/', GraphQLView.as_view(schema=schema, graphiql=True)),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    
 ]
