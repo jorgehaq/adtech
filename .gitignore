@@ -16,4 +16,4 @@ db.sqlite3
 logs/
 hooks/
 objects/
-refs/
+refs/git_log.txt
