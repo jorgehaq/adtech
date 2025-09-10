@@ -1,11 +1,14 @@
 import time
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .repository import AnalyticsRepository
 from apps.analytics.models import AdEvent
 from apps.campaigns.models import Campaign
 from django.db import connection
+from apps.analytics.tasks import aggregate_daily_metrics
 
 
 @api_view(['GET'])
@@ -466,3 +469,13 @@ def circuit_breaker_status(request):
         status[circuit] = data['state']
     
     return Response(status)
+
+
+
+class AggregateMetricsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        tenant_id = request.user.tenant_id
+        task = aggregate_daily_metrics.delay(tenant_id)
+        return Response({'task_id': task.id, 'status': 'aggregation started'})
