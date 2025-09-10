@@ -241,7 +241,7 @@ class AnalyticsRepository:
             JOIN campaigns_impression ci ON ufi.user_id = ci.user_id
             WHERE ci.tenant_id = %s
             AND DATEDIFF(DATE(ci.timestamp), ufi.cohort_month) <= 30
-            GROUP BY ufi.cohort_month, ufi.user_id, DATE(ci.timestamp)
+            GROUP BY ufi.cohort_month, ufi.user_id, DATEDIFF(DATE(ci.timestamp), ufi.cohort_month)
         ),
         cohort_metrics AS (
             SELECT 
