@@ -16,4 +16,9 @@ urlpatterns = [
     path('benchmark/', views.performance_benchmark, name='performance_benchmark'),
     path('realtime/dashboard/', views.real_time_dashboard, name='realtime_dashboard'),
     path('bid/simulate/', views.bid_processing_simulation, name='bid_simulation'),
+    path('realtime/metrics/', views.real_time_metrics, name='realtime_metrics'),
+    path('cohorts/advanced/', views.advanced_cohort_analysis, name='advanced_cohorts'),
+    path('campaigns/ranking/', views.campaign_performance_ranking, name='campaign_ranking'),
+    path('campaigns/<int:campaign_id>/hourly/', views.hourly_performance_trend, name='hourly_trend'),
+    path('performance/monitor/', views.query_performance_monitor, name='query_monitor'),
 ]

@@ -402,3 +402,49 @@ def sync_to_bigquery(request):
     return Response({'synced_rows': result.total_rows})
 
 
+@api_view(['GET'])
+def real_time_metrics(request):
+    """Sub-100ms real-time metrics endpoint"""
+    campaign_id = request.GET.get('campaign_id')
+    data = AnalyticsRepository.get_real_time_metrics(
+        request.user.tenant_id, 
+        campaign_id
+    )
+    return Response(data)
+
+@api_view(['GET'])
+def advanced_cohort_analysis(request):
+    """Production cohort analysis with window functions"""
+    days_back = int(request.GET.get('days_back', 30))
+    data = AnalyticsRepository.advanced_cohort_analysis(
+        request.user.tenant_id, 
+        days_back
+    )
+    return Response(data)
+
+@api_view(['GET'])
+def campaign_performance_ranking(request):
+    """Advanced campaign ranking"""
+    limit = int(request.GET.get('limit', 20))
+    data = AnalyticsRepository.campaign_performance_ranking(
+        request.user.tenant_id, 
+        limit
+    )
+    return Response(data)
+
+@api_view(['GET'])
+def hourly_performance_trend(request, campaign_id):
+    """Hourly trend analysis"""
+    hours_back = int(request.GET.get('hours_back', 24))
+    data = AnalyticsRepository.hourly_performance_trend(
+        request.user.tenant_id, 
+        campaign_id, 
+        hours_back
+    )
+    return Response(data)
+
+@api_view(['GET'])
+def query_performance_monitor(request):
+    """Query performance monitoring"""
+    data = AnalyticsRepository.get_query_performance_stats()
+    return Response(data)
