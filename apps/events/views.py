@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from .models import ImpressionEvent, ClickEvent, ConversionEvent
 from .serializers import ImpressionEventSerializer, ClickEventSerializer, ConversionEventSerializer
 from apps.analytics.models import AdEvent
+from .pubsub import EventPublisher
+from django.conf import settings
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -26,6 +28,17 @@ def create_impression_event(request):
             },
             sequence_number=AdEvent.objects.count() + 1
         )
+
+        if settings.DEBUG is False:  # Solo en production
+            publisher = EventPublisher()
+            publisher.publish_impression_event(
+                request.user.tenant_id,
+                {
+                    'campaign_id': impression.campaign.id,
+                    'cost': str(impression.cost),
+                    'timestamp': impression.timestamp.isoformat()
+                }
+            )
         
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

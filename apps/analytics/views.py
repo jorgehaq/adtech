@@ -1,12 +1,15 @@
 import time
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .repositories import AnalyticsRepository
 from apps.analytics.models import AdEvent
 from apps.campaigns.models import Campaign
 from django.db import connection
 
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated]) 
 def cohort_analysis(request):
     data = AnalyticsRepository.cohort_analysis(request.user.tenant_id)
     formatted_data = [{
@@ -375,5 +378,27 @@ def calculate_bid_price(tenant_id, bid_id):
             'bid_price': round(bid_price, 4),
             'confidence': 'high' if volume > 50 else 'medium'
         }
+
+
+@api_view(['GET'])
+def bigquery_analytics(request):
+    from .bigquery import BigQueryAnalytics
+    
+    bq = BigQueryAnalytics()
+    cohort_data = bq.cohort_analysis_bigquery(request.user.tenant_id)
+    
+    return Response({
+        'source': 'bigquery',
+        'data': [dict(row) for row in cohort_data]
+    })
+
+@api_view(['POST'])
+def sync_to_bigquery(request):
+    from .bigquery import BigQueryAnalytics
+    
+    bq = BigQueryAnalytics()
+    result = bq.sync_impressions(request.user.tenant_id)
+    
+    return Response({'synced_rows': result.total_rows})
 
 

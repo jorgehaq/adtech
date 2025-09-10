@@ -14,11 +14,7 @@ class TenantIsolationMiddleware:
             '/api/v1/auth/token/refresh/'
         ]
 
-        # Debug: agregar logging para verificar el path
-        print(f"Request path: '{request.path}'")
-        print(f"Excluded paths: {auth_excluded_paths}")
-        print(f"Path in excluded: {request.path in auth_excluded_paths}")
-
+        # Solo aplicar autenticación JWT a rutas API que no estén excluidas
         if request.path.startswith('/api/') and request.path not in auth_excluded_paths:
             auth = JWTAuthentication()
             try:
@@ -26,9 +22,10 @@ class TenantIsolationMiddleware:
                 user = auth.get_user(validated_token)
                 request.user = user
                 request.tenant_id = getattr(user, 'tenant_id', None)
-            except (InvalidToken, AttributeError):
+            except (InvalidToken, AttributeError, TypeError):
                 # No bloquear, solo continuar sin usuario autenticado
-                pass
+                request.user = None
+                request.tenant_id = None
 
         response = self.get_response(request)
         return response

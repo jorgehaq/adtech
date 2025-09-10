@@ -1,37 +1,39 @@
 FROM python:3.12-slim
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Instalar dependencias del sistema necesarias para mysqlclient
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        default-libmysqlclient-dev \
-        pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+   && apt-get install -y --no-install-recommends \
+       build-essential \
+       default-libmysqlclient-dev \
+       pkg-config \
+   && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY pyproject.toml .
-RUN pip install --upgrade pip \
-    && pip install poetry \
-    && poetry config virtualenvs.create false \
-    && poetry install --no-dev
+# Instalar Poetry y configurar para no crear virtualenv
+RUN pip install poetry
+ENV POETRY_VENV_IN_PROJECT=1
+ENV POETRY_NO_INTERACTION=1
 
-# Copy project
+# Copiar archivos de configuración del proyecto
+COPY pyproject.toml poetry.lock ./
+
+# Instalar las dependencias del proyecto usando Poetry
+RUN poetry config virtualenvs.create false && poetry install --only main --no-root
+
+# Copiar el resto del código y el script de inicio
 COPY . .
+RUN chmod +x start.sh
 
-# Create non-root user
+# ... El resto del Dockerfile permanece igual
 RUN adduser --disabled-password --gecos '' appuser \
-    && chown -R appuser:appuser /app
+   && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
-EXPOSE 8070
+EXPOSE 8080
 
-# Default command (overridden in docker-compose)
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8070"]
+CMD ["./start.sh"]

@@ -25,8 +25,19 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField()
     
     def validate(self, data):
-        user = authenticate(username=data['email'], password=data['password'])
-        if not user:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        try:
+            # Buscar el usuario por email
+            user = User.objects.get(email=data['email'])
+            # Verificar la contraseña
+            if user.check_password(data['password']):
+                if not user.is_active:
+                    raise serializers.ValidationError('User account is disabled')
+                data['user'] = user
+                return data
+            else:
+                raise serializers.ValidationError('Invalid credentials')
+        except User.DoesNotExist:
             raise serializers.ValidationError('Invalid credentials')
-        data['user'] = user
-        return data
