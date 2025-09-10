@@ -1,13 +1,21 @@
 from celery import shared_task
-from tenacity import retry, stop_after_attempt
+from django.db.models import Sum, Count, F
+from apps.campaigns.models import Campaign, Impression
 
 @shared_task
-@retry(stop=stop_after_attempt(3))
-def calculate_daily_metrics(tenant_id, date):
-    # Cálculo pesado de métricas
-    pass
-
-@shared_task
-def process_events_batch(event_ids):
-    # Procesamiento batch
-    pass
+def aggregate_daily_metrics(tenant_id):
+    """Aggregate daily metrics per campaign for a tenant."""
+    # Suponiendo que Impression tiene fields: campaign, timestamp, cost, tenant_id
+    results = (
+        Impression.objects.filter(tenant_id=tenant_id)
+        .annotate(campaign_id=F('ad__campaign_id'))
+        .values('campaign_id', 'timestamp__date')
+        .annotate(
+            impressions=Count('id'),
+            total_cost=Sum('cost')
+        )
+        .order_by('campaign_id', 'timestamp__date')
+    )
+    # (Opcional) Puedes guardar en tabla de agregados si existe, o solo loggear
+    print(f"[Celery] Aggregated {len(results)} daily metrics for tenant {tenant_id}")
+    return list(results)
