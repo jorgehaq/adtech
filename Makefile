@@ -215,7 +215,43 @@ print('Recent events:'); \
 [print(f'  {event.event_type} - {event.timestamp} - {event.payload}') for event in events]"
 
 
+# ==============================================
+# TEST CIRCUIT BREAKER
+# ==============================================
 
+# Test circuit breaker implementation
+.PHONY: test-circuit-breaker test-circuit-breaker-stress test-circuit-status
+
+# Test normal operation (should work)
+test-circuit-breaker: services
+	@echo "🔧 Testing Circuit Breaker Implementation..."
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
+	PORT_TO_USE=8070; \
+	while lsof -i :$$PORT_TO_USE > /dev/null 2>&1; do \
+		echo "Port $$PORT_TO_USE is in use, trying $$((PORT_TO_USE + 1))"; \
+		PORT_TO_USE=$$((PORT_TO_USE + 1)); \
+	done; \
+	echo "Starting server on port $$PORT_TO_USE..."; \
+	python manage.py runserver 0.0.0.0:$$PORT_TO_USE & \
+	SERVER_PID=$$!; \
+	sleep 5; \
+	echo "Running circuit breaker tests..."; \
+	export TEST_PORT=$$PORT_TO_USE; ./test_circuit_breaker.sh || true; \
+	echo "Stopping server..."; \
+	kill $$SERVER_PID 2>/dev/null || true
+
+# Test circuit breaker status endpoint
+test-circuit-status:
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
+	echo "📊 Testing circuit breaker status..."; \
+	python -c "\
+import os, django; \
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local'); \
+django.setup(); \
+from django.core.cache import cache; \
+print('Circuit states:'); \
+circuits = ['apps.campaigns.views.get_queryset', 'apps.analytics.repository.cohort_analysis']; \
+[print(f'  {circuit}: {cache.get(f\"circuit_breaker:{circuit}\", {\"state\": \"closed\"})}') for circuit in circuits]"
 
 
 

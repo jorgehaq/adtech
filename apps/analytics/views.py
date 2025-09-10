@@ -448,3 +448,21 @@ def query_performance_monitor(request):
     """Query performance monitoring"""
     data = AnalyticsRepository.get_query_performance_stats()
     return Response(data)
+
+# apps/analytics/views.py (health check)
+@api_view(['GET'])
+def circuit_breaker_status(request):
+    from django.core.cache import cache
+    
+    circuits = [
+        'apps.campaigns.views.get_queryset',
+        'apps.analytics.repository.cohort_analysis'
+    ]
+    
+    status = {}
+    for circuit in circuits:
+        cache_key = f"circuit_breaker:{circuit}"
+        data = cache.get(cache_key, {'state': 'closed'})
+        status[circuit] = data['state']
+    
+    return Response(status)

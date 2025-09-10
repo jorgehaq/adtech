@@ -21,4 +21,5 @@ urlpatterns = [
     path('campaigns/ranking/', views.campaign_performance_ranking, name='campaign_ranking'),
     path('campaigns/<int:campaign_id>/hourly/', views.hourly_performance_trend, name='hourly_trend'),
     path('performance/monitor/', views.query_performance_monitor, name='query_monitor'),
+    path('circuit-breaker/status/', views.circuit_breaker_status, name='circuit_status'),
 ]
