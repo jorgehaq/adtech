@@ -70,9 +70,6 @@ migrate:
 shell:
 	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py shell
 
-test:
-	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; python manage.py test
-
 dbshell:
 	@docker compose exec mysql mysql -u root -p
 
@@ -116,6 +113,47 @@ health:
 	@echo ""
 	@curl -s http://localhost:3306 > /dev/null && echo "✅ MySQL" || echo "❌ MySQL"
 	@redis-cli ping > /dev/null && echo "✅ Redis" || echo "❌ Redis"
+
+
+
+# ==============================================
+# TEST ANALYTICS LOCAL
+# ==============================================
+
+
+
+# Common test setup
+define TEST_SETUP
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local
+endef
+
+.PHONY: test test-analytics test-repositories test-performance
+
+# Default test target - runs repository tests
+test: test-repositories
+
+# Run all analytics tests with verbose output
+test-analytics:
+	$(TEST_SETUP); python manage.py test apps.analytics -v 2
+
+# Run repository tests with verbose output
+test-repositories:
+	$(TEST_SETUP); python manage.py test apps.analytics.tests.test_repositories -v 2
+
+# Run specific performance test
+test-performance:
+	$(TEST_SETUP); python manage.py test apps.analytics.tests.test_repositories::AnalyticsRepositoryTest::test_cohort_analysis_performance -v 2
+
+
+
+
+
+
+
+
+
+
+
 
 # ==============================================
 # GCP DEPLOYMENT SEQUENCE
