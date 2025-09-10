@@ -2,7 +2,7 @@ import time
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .repositories import AnalyticsRepository
+from .repository import AnalyticsRepository
 from apps.analytics.models import AdEvent
 from apps.campaigns.models import Campaign
 from django.db import connection
