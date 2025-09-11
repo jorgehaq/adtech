@@ -280,6 +280,37 @@ circuits = ['apps.campaigns.views.get_queryset', 'apps.analytics.repository.coho
 [print(f'  {circuit}: {cache.get(f\"circuit_breaker:{circuit}\", {\"state\": \"closed\"})}') for circuit in circuits]"
 
 
+# Test circuit breaker with authentication and stress
+test-circuit-breaker-stress: services
+	@echo "🔧 Testing Circuit Breaker Under Stress..."
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
+	PORT_TO_USE=8070; \
+	while lsof -i :$$PORT_TO_USE > /dev/null 2>&1; do \
+		echo "Port $$PORT_TO_USE is in use, trying $$((PORT_TO_USE + 1))"; \
+		PORT_TO_USE=$$((PORT_TO_USE + 1)); \
+	done; \
+	echo "Starting server on port $$PORT_TO_USE..."; \
+	python manage.py runserver 0.0.0.0:$$PORT_TO_USE & \
+	SERVER_PID=$$!; \
+	sleep 5; \
+	echo "Getting JWT token..."; \
+	TOKEN_RESPONSE=$$(curl -s -X POST "http://localhost:$$PORT_TO_USE/api/v1/auth/register/" \
+		-H "Content-Type: application/json" \
+		-d '{"email":"stress-test@test.com","username":"stressuser","password":"testpass123","tenant_id":1,"role":"user"}'); \
+	ACCESS_TOKEN=$$(echo "$$TOKEN_RESPONSE" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('access', ''))" 2>/dev/null || echo ""); \
+	if [ -n "$$ACCESS_TOKEN" ]; then \
+		echo "✅ Token obtained, running stress test..."; \
+		for i in {1..20}; do \
+			curl -s -H "Authorization: Bearer $$ACCESS_TOKEN" "http://localhost:$$PORT_TO_USE/api/v1/campaigns/" > /dev/null & \
+		done; \
+		wait; \
+		echo "Checking circuit status..."; \
+		curl -s "http://localhost:$$PORT_TO_USE/api/v1/analytics/circuit-breaker/status/" | python3 -m json.tool; \
+	else \
+		echo "❌ Failed to get token"; \
+	fi; \
+	echo "Stopping server..."; \
+	kill $$SERVER_PID 2>/dev/null || true
 
 
 

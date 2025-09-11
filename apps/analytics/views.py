@@ -460,3 +460,30 @@ class AggregateMetricsView(APIView):
         tenant_id = request.user.tenant_id
         task = aggregate_daily_metrics.delay(tenant_id)
         return Response({'task_id': task.id, 'status': 'aggregation started'})
+
+
+# apps/analytics/views.py (agregar al final)
+@api_view(['GET'])
+def circuit_breaker_status(request):
+    """Check circuit breaker status"""
+    from django.core.cache import cache
+    
+    circuits = [
+        'apps.campaigns.views.get_queryset',
+        'apps.analytics.repository.cohort_analysis'
+    ]
+    
+    status = {}
+    for circuit in circuits:
+        cache_key = f"circuit_breaker:{circuit}"
+        data = cache.get(cache_key, {'state': 'closed', 'failure_count': 0})
+        status[circuit] = {
+            'state': data.get('state', 'closed'),
+            'failure_count': data.get('failure_count', 0),
+            'last_failure_time': data.get('last_failure_time')
+        }
+    
+    return Response({
+        'circuit_breakers': status,
+        'overall_health': 'healthy' if all(s['state'] == 'closed' for s in status.values()) else 'degraded'
+    })
