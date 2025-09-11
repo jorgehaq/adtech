@@ -170,7 +170,8 @@ test-repositories:
 
 # Run specific performance test
 test-performance:
-	$(TEST_SETUP); python manage.py test apps.analytics.tests.test_repositories::AnalyticsRepositoryTest::test_cohort_analysis_performance -v 2
+	$(TEST_SETUP); python manage.py test apps.analytics.tests.test_repositories.AnalyticsRepositoryTest -v 2
+
 
 
 
@@ -218,29 +219,26 @@ print('Events replayed:', result)"
 # Test event creation flow
 test-event-creation:
 	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
-	echo "📝 Testing event creation..."; \
-	python -c "\
-import os, django; \
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local'); \
-django.setup(); \
-from apps.analytics.models import AdEvent; \
-print('Creating test event...'); \
-event = AdEvent.objects.create(tenant_id=1, event_type='impression_created', aggregate_id='1', payload={'cost': '0.50', 'user_id': 12345}, sequence_number=AdEvent.objects.count() + 1); \
-print('Event created:', event.id); \
-print('Total events:', AdEvent.objects.count())"
+	python -c "
+	from apps.campaigns.models import Campaign;
+	from apps.advertisers.models import Advertiser;
+	from apps.analytics.models import AdEvent;
+	# Create test data if missing
+	if not Campaign.objects.filter(tenant_id=1).exists():
+	    print('Creating test campaign...');
+	    adv = Advertiser.objects.get_or_create(tenant_id=1, name='Test', defaults={'email':'test@test.com', 'status':'active'})[0];
+	    Campaign.objects.create(tenant_id=1, name='Test Campaign', budget=1000, status='active', start_date='2025-01-01', end_date='2025-12-31', advertiser=adv);
+	event = AdEvent.objects.create(tenant_id=1, event_type='impression_created', aggregate_id='1', payload={'cost': '0.50', 'user_id': 12345}, sequence_number=AdEvent.objects.count() + 1);
+	print('Event created:', event.id)"
 
 # Test audit trail
 test-audit-trail:
 	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
-	echo "📋 Testing audit trail..."; \
-	python -c "\
-import os, django; \
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local'); \
-django.setup(); \
-from apps.analytics.models import AdEvent; \
-events = AdEvent.objects.filter(tenant_id=1).order_by('-timestamp')[:5]; \
-print('Recent events:'); \
-[print(f'  {event.event_type} - {event.timestamp} - {event.payload}') for event in events]"
+	python -c "
+	from apps.analytics.models import AdEvent;
+	events = AdEvent.objects.filter(tenant_id=1).order_by('-timestamp')[:5];
+	if events: [print(f'  {e.event_type} - {e.timestamp} - {e.payload}') for e in events]
+	else: print('No events found - create some first')"
 
 
 # ==============================================

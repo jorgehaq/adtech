@@ -25,7 +25,7 @@ done
 
 # Test 1: Check analytics endpoints are accessible
 echo "📊 Test 1: Testing analytics endpoints..."
-if curl -s ${BASE_URL}/api/analytics/cohort-analysis/ > /dev/null 2>&1; then
+if curl -s ${BASE_URL}/api/v1/analytics/cohorts/ > /dev/null 2>&1; then
     echo "✅ Cohort analysis endpoint accessible"
 else
     echo "⚠️ Cohort analysis endpoint not available"
@@ -33,7 +33,7 @@ fi
 
 # Test 2: Test campaign performance endpoint
 echo "📈 Test 2: Testing campaign performance..."
-if curl -s ${BASE_URL}/api/analytics/campaign-performance/ > /dev/null 2>&1; then
+if curl -s ${BASE_URL}/api/v1/analytics/performance/ > /dev/null 2>&1; then
     echo "✅ Campaign performance endpoint accessible"
 else
     echo "⚠️ Campaign performance endpoint not available"
@@ -41,7 +41,7 @@ fi
 
 # Test 3: Test real-time dashboard
 echo "⚡ Test 3: Testing real-time dashboard..."
-if curl -s ${BASE_URL}/api/analytics/real-time-dashboard/ > /dev/null 2>&1; then
+if curl -s ${BASE_URL}/api/v1/analytics/realtime/dashboard/ > /dev/null 2>&1; then
     echo "✅ Real-time dashboard endpoint accessible"
 else
     echo "⚠️ Real-time dashboard endpoint not available"
