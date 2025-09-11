@@ -7,5 +7,5 @@ router.register(r'campaigns', CampaignViewSet)
 router.register(r'ads', AdViewSet)
 
 urlpatterns = [
-    path('api/v1/', include(router.urls)),
+    path('', include(router.urls)),
 ]

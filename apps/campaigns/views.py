@@ -28,3 +28,6 @@ class AdViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(tenant_id=self.request.user.tenant_id)
+
+
+ 

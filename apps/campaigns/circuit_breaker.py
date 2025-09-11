@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class CircuitState(Enum):
     CLOSED = "closed"
-    OPEN = "open" 
+    OPEN = "open"
     HALF_OPEN = "half_open"
 
 class CircuitBreaker:
@@ -17,7 +17,6 @@ class CircuitBreaker:
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.expected_exception = expected_exception
-        self.name = self.__class__.__name__
         
     def _get_cache_key(self, func_name):
         return f"circuit_breaker:{func_name}"
@@ -98,8 +97,3 @@ class CircuitBreaker:
             
         # Default fallback
         return [] if 'get_queryset' in func_name else None
-
-# Usage in views
-@CircuitBreaker(failure_threshold=3, recovery_timeout=30)
-def get_queryset(self):
-    return Campaign.objects.filter(tenant_id=self.request.user.tenant_id)
