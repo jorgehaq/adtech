@@ -24,4 +24,6 @@ urlpatterns = [
     path('performance/monitor/', views.query_performance_monitor, name='query_monitor'),
     path('circuit-breaker/status/', views.circuit_breaker_status, name='circuit_status'),
     path('aggregate/', AggregateMetricsView.as_view(), name='aggregate-metrics'),
+    path('celery/health/', views.celery_health_check, name='celery_health'),
+    path('celery/flower/', views.flower_status, name='flower_status'),
 ]

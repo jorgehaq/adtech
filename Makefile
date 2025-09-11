@@ -84,7 +84,15 @@ celery:
 	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; .venv/bin/celery -A core worker -l info
 
 flower:
-	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; .venv/bin/celery -A core flower --port=5555
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
+	echo "🌸 Starting Flower on available port..."; \
+	PORT_TO_USE=5555; \
+	while lsof -i :$$PORT_TO_USE > /dev/null 2>&1; do \
+		echo "Port $$PORT_TO_USE is in use, trying $$((PORT_TO_USE + 1))"; \
+		PORT_TO_USE=$$((PORT_TO_USE + 1)); \
+	done; \
+	echo "Starting Flower on port $$PORT_TO_USE"; \
+	.venv/bin/celery -A core flower --port=$$PORT_TO_USE
 
 
 .PHONY: celery-check

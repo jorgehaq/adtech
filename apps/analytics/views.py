@@ -487,3 +487,80 @@ def circuit_breaker_status(request):
         'circuit_breakers': status,
         'overall_health': 'healthy' if all(s['state'] == 'closed' for s in status.values()) else 'degraded'
     })
+
+
+    # apps/analytics/views.py (agregar)
+@api_view(['GET'])
+def celery_health_check(request):
+    """Check Celery worker and broker status"""
+    from celery import current_app
+    from django.core.cache import cache
+    import redis
+    
+    try:
+        # Test Redis connection
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        redis_status = "connected" if r.ping() else "disconnected"
+    except:
+        redis_status = "disconnected"
+    
+    try:
+        # Test Celery workers
+        inspect = current_app.control.inspect()
+        active_workers = inspect.active()
+        worker_count = len(active_workers) if active_workers else 0
+    except:
+        worker_count = 0
+        active_workers = {}
+    
+    return Response({
+        'redis_broker': redis_status,
+        'active_workers': worker_count,
+        'worker_details': active_workers,
+        'queue_length': get_queue_length(),
+        'recent_tasks': get_recent_tasks()
+    })
+
+def get_queue_length():
+    """Get approximate queue length"""
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        return r.llen('celery')
+    except:
+        return 0
+
+def get_recent_tasks():
+    """Get recent task results from cache"""
+    from django.core.cache import cache
+    return cache.get('recent_celery_tasks', [])
+
+
+@api_view(['GET'])
+def flower_status(request):
+    """Flower monitoring integration"""
+    import requests
+    
+    try:
+        # Check if Flower is running
+        response = requests.get('http://localhost:5555/api/workers', timeout=2)
+        flower_data = response.json()
+        
+        return Response({
+            'flower_available': True,
+            'flower_url': 'http://localhost:5555',
+            'workers': flower_data
+        })
+    except:
+        return Response({
+            'flower_available': False,
+            'message': 'Flower not running. Start with: make flower'
+        })
+
+
+def check_flower_running():
+    import subprocess
+    try:
+        result = subprocess.run(['lsof', '-i', ':5555'], capture_output=True, text=True)
+        return 'flower' in result.stdout.lower()
+    except:
+        return False
