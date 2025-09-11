@@ -111,3 +111,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.run.app',
     'https://*.adtech.com'
 ]
+
+
+GCP_PROJECT_ID = config("GCP_PROJECT_ID", default="adtech-project")
+GOOGLE_APPLICATION_CREDENTIALS = config("GOOGLE_APPLICATION_CREDENTIALS", default=None)

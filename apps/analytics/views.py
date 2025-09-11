@@ -384,25 +384,71 @@ def calculate_bid_price(tenant_id, bid_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def bigquery_analytics(request):
+    """Get analytics from BigQuery"""
     from .bigquery import BigQueryAnalytics
     
     bq = BigQueryAnalytics()
-    cohort_data = bq.cohort_analysis_bigquery(request.user.tenant_id)
+    analysis_type = request.GET.get('type', 'cohort')
     
-    return Response({
-        'source': 'bigquery',
-        'data': [dict(row) for row in cohort_data]
-    })
+    try:
+        if analysis_type == 'cohort':
+            days_back = int(request.GET.get('days_back', 30))
+            data = bq.cohort_analysis_bigquery(request.user.tenant_id, days_back)
+        elif analysis_type == 'performance':
+            campaign_id = request.GET.get('campaign_id')
+            if campaign_id:
+                campaign_id = int(campaign_id)
+            data = bq.campaign_performance_bigquery(request.user.tenant_id, campaign_id)
+        else:
+            return Response({'error': 'Invalid analysis type'}, status=400)
+        
+        return Response({
+            'source': 'bigquery',
+            'type': analysis_type,
+            'tenant_id': request.user.tenant_id,
+            'data': data,
+            'total_records': len(data)
+        })
+    except Exception as e:
+        return Response({
+            'error': str(e),
+            'source': 'bigquery'
+        }, status=500)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def sync_to_bigquery(request):
+    """Sync data from MySQL to BigQuery"""
     from .bigquery import BigQueryAnalytics
     
     bq = BigQueryAnalytics()
-    result = bq.sync_impressions(request.user.tenant_id)
+    batch_size = int(request.data.get('batch_size', 10000))
     
-    return Response({'synced_rows': result.total_rows})
+    try:
+        result = bq.sync_impressions(request.user.tenant_id, batch_size)
+        return Response({
+            'sync_result': result,
+            'tenant_id': request.user.tenant_id,
+            'batch_size': batch_size
+        })
+    except Exception as e:
+        return Response({
+            'error': str(e),
+            'tenant_id': request.user.tenant_id
+        }, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def bigquery_status(request):
+    """Get BigQuery sync status"""
+    from .bigquery import BigQueryAnalytics
+    
+    bq = BigQueryAnalytics()
+    status = bq.get_sync_status(request.user.tenant_id)
+    
+    return Response(status)
 
 
 @api_view(['GET'])

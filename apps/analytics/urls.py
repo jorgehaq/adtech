@@ -26,4 +26,7 @@ urlpatterns = [
     path('aggregate/', AggregateMetricsView.as_view(), name='aggregate-metrics'),
     path('celery/health/', views.celery_health_check, name='celery_health'),
     path('celery/flower/', views.flower_status, name='flower_status'),
+    path('bigquery/', views.bigquery_analytics, name='bigquery_analytics'),
+    path('sync-bigquery/', views.sync_to_bigquery, name='sync_bigquery'),
+    path('bigquery/status/', views.bigquery_status, name='bigquery_status'),
 ]
