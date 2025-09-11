@@ -32,7 +32,7 @@ endef
 .PHONY: services services-down services-logs services-restart
 
 services:
-	@docker compose up -d
+	@docker compose --env-file .env.local up -d
 	@echo "✅ Services started:"
 	@echo "   - MySQL: localhost:3306"
 	@echo "   - Redis: localhost:6379"
@@ -81,10 +81,39 @@ load-million:
 .PHONY: celery flower
 
 celery:
-	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; celery -A core worker -l info
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; .venv/bin/celery -A core worker -l info
 
 flower:
-	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; celery -A core flower --port=5555
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; .venv/bin/celery -A core flower --port=5555
+
+
+.PHONY: celery-check
+
+.PHONY: celery-check
+
+celery-check:
+	@$(call LOAD_LOCAL_ENV); \
+	echo "🔍 Verificando estado de Redis (docker)..."; \
+	REDIS_CONTAINER=$$(docker ps --format '{{.Names}}' | grep redis || true); \
+	if [ -z "$$REDIS_CONTAINER" ]; then \
+		echo "❌ No se encontró contenedor Redis corriendo. Ejecuta 'make services'."; \
+		exit 1; \
+	fi; \
+	if docker exec $$REDIS_CONTAINER redis-cli ping | grep -q PONG; then \
+		echo "✅ Redis responde correctamente en contenedor $$REDIS_CONTAINER."; \
+	else \
+		echo "❌ Redis no responde dentro del contenedor $$REDIS_CONTAINER."; \
+		exit 1; \
+	fi; \
+	echo "🚦 Verificando conexión de Celery con el broker..."; \
+	if .venv/bin/celery -A core status | grep -q "OK"; then \
+		echo "✅ Celery conectado correctamente al broker."; \
+	else \
+		echo "❌ Celery no pudo conectarse. ¿Está corriendo 'make celery'?"; \
+		exit 1; \
+	fi
+
+
 
 # Development workflow
 .PHONY: up dev flush
@@ -103,17 +132,16 @@ flush:
 
 # Cleanup
 clean:
-	@docker compose down -v
+	@$(call LOAD_LOCAL_ENV); docker compose down -v
 	@docker system prune -f
 
 # Health check
 health:
-	@echo "🏥 Services Health Check:"
-	@docker compose ps
+	@echo "Services Health Check:"
+	@docker compose --env-file $(ENV_LOCAL_FILE) ps
 	@echo ""
-	@curl -s http://localhost:3306 > /dev/null && echo "✅ MySQL" || echo "❌ MySQL"
-	@redis-cli ping > /dev/null && echo "✅ Redis" || echo "❌ Redis"
-
+	@docker exec adtech-mysql-1 mysql -u root -ppassword -e "SELECT 1" > /dev/null 2>&1 && echo "✅ MySQL" || echo "❌ MySQL"
+	@docker exec adtech-redis-1 redis-cli ping > /dev/null 2>&1 && echo "✅ Redis" || echo "❌ Redis"
 
 
 # ==============================================
