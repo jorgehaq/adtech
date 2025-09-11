@@ -1,5 +1,6 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from asgiref.sync import sync_to_async
 from .pubsub import EventStreamer, RealTimeProcessor
 
@@ -44,4 +45,20 @@ def stream_status(request):  # ← Quitar async
         'cached_metrics': processor.metrics_cache,
         'redis_connected': processor.streamer.redis_client.ping(),
         'pubsub_simulation': 'active'
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def test_websocket_connection(request):
+    """Test endpoint for WebSocket connection"""
+    # Dynamic host detection
+    host = request.get_host()
+    protocol = 'wss' if request.is_secure() else 'ws'
+    
+    return Response({
+        'websocket_url': f'{protocol}://{host}/ws/campaign/1/metrics/?token={request.auth}',
+        'dashboard_url': f'{protocol}://{host}/ws/realtime/dashboard/?token={request.auth}',
+        'user_tenant': request.user.tenant_id,
+        'gcp_ready': True
     })

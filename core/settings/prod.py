@@ -92,3 +92,22 @@ STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 STATIC_ROOT = "/app/staticfiles"
 
 
+# Channel layers for GCP
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(REDIS_HOST, 6379)],
+            "capacity": 1500,
+            "expiry": 10,
+        },
+    },
+}
+
+
+# WebSocket security
+ALLOWED_HOSTS = ["*"]  # Cloud Run dynamic
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.run.app',
+    'https://*.adtech.com'
+]

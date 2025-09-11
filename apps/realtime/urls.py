@@ -4,4 +4,5 @@ from . import views
 urlpatterns = [
     path('publish/', views.publish_test_events, name='publish_events'),
     path('status/', views.stream_status, name='stream_status'),
+    path('test-websocket/', views.test_websocket_connection, name='test_websocket'),
 ]
