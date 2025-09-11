@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from apps.events.views import rebuild_campaign_metrics
+from apps.analytics.views import AggregateMetricsView
 
 urlpatterns = [
     path('cohorts/', views.cohort_analysis, name='cohort_analysis'),
@@ -22,4 +23,6 @@ urlpatterns = [
     path('campaigns/<int:campaign_id>/hourly/', views.hourly_performance_trend, name='hourly_trend'),
     path('performance/monitor/', views.query_performance_monitor, name='query_monitor'),
     path('circuit-breaker/status/', views.circuit_breaker_status, name='circuit_status'),
+    path('aggregate/', AggregateMetricsView.as_view(), name='aggregate-metrics'),
+
 ]

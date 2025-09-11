@@ -22,15 +22,26 @@ DATABASES = {
     }
 }
 
-REDIS_HOST = config("REDIS_HOST", default="127.0.0.1")
-CELERY_BROKER_URL = f"redis://{REDIS_HOST}:6379/0"
-CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:6379/1"
+# Redis (Memorystore - Staging instance)
+REDIS_HOST = config("REDIS_HOST", default="localhost")
+BROKER_DB = config("CELERY_BROKER_DB", cast=int, default=0)
+RESULT_DB = config("CELERY_RESULT_DB", cast=int, default=1)
+CACHE_DB = config("DJANGO_CACHE_DB", cast=int, default=2)
+
+
+# Celery
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:6379/{BROKER_DB}"
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:6379/{RESULT_DB}"
+CELERY_BROKER_TRANSPORT = 'redis'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:6379/2",
+        "LOCATION": f"redis://{REDIS_HOST}:6379/{CACHE_DB}",
         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-        "TIMEOUT": 300,
+        "TIMEOUT": config("DJANGO_CACHE_TIMEOUT", cast=int, default=600),
     }
 }
