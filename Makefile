@@ -248,6 +248,20 @@ test-audit-trail:
 	if events: [print(f'  {e.event_type} - {e.timestamp} - {e.payload}') for e in events]
 	else: print('No events found - create some first')"
 
+# Test event replay endpoint specifically  
+test-event-replay-endpoint:
+	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
+	echo "🔄 Testing event replay endpoint..."; \
+	TOKEN_RESPONSE=$$(curl -s -X POST "http://localhost:8070/api/v1/auth/register/" \
+		-H "Content-Type: application/json" \
+		-d '{"email":"replay-test@test.com","username":"replayuser","password":"testpass123","tenant_id":1,"role":"user"}'); \
+	ACCESS_TOKEN=$$(echo "$$TOKEN_RESPONSE" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('access', ''))" 2>/dev/null || echo ""); \
+	if [ -n "$$ACCESS_TOKEN" ]; then \
+		echo "✅ Testing event replay..."; \
+		curl -X POST "http://localhost:8070/api/v1/events/rebuild-metrics/1/" \
+			-H "Authorization: Bearer $$ACCESS_TOKEN" | python3 -m json.tool; \
+	fi
+
 
 # ==============================================
 # TEST CIRCUIT BREAKER
