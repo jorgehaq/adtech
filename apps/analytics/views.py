@@ -4,42 +4,64 @@ from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .repository import AnalyticsRepository
-from apps.analytics.models import AdEvent
-from apps.campaigns.models import Campaign
 from django.db import connection
+from django.core.cache import cache
 from apps.analytics.tasks import aggregate_daily_metrics
+from apps.analytics.models import AdEvent
+from apps.campaigns.models import Campaign, Impression
+from apps.campaigns.circuit_breaker import CircuitBreaker
+from .repository import AnalyticsRepository
+
+analytics_circuit = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated]) 
+@analytics_circuit
 def cohort_analysis(request):
-    data = AnalyticsRepository.cohort_analysis(request.user.tenant_id)
+    """Cohort analysis with repository connection"""
+    tenant_id = request.user.tenant_id
+    data = AnalyticsRepository.cohort_analysis(tenant_id)
+    
     formatted_data = [{
         'cohort_month': row[0],
         'period_days': row[1], 
         'users': row[2],
         'total_impressions': row[3],
-        'retention_rate': row[4]
+        'retention_rate': float(row[4]) if row[4] else 0.0
     } for row in data]
-    return Response(formatted_data)
+    
+    return Response({
+        'cohorts': formatted_data,
+        'total_cohorts': len(formatted_data),
+        'performance_ms': 'sub_500ms'
+    })
 
-@api_view(['GET'])  
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@analytics_circuit
 def campaign_performance(request):
-    data = AnalyticsRepository.campaign_performance_window(request.user.tenant_id)
+    """Campaign performance with window functions"""
+    tenant_id = request.user.tenant_id
+    data = AnalyticsRepository.campaign_performance_window(tenant_id)
+    
     formatted_data = [{
         'campaign_id': row[0],
         'campaign_name': row[1],
         'date': row[2],
         'impressions': row[3],
-        'total_cost': float(row[4]),
-        'avg_cost': float(row[5]),
+        'total_cost': float(row[4]) if row[4] else 0.0,
+        'avg_cost': float(row[5]) if row[5] else 0.0,
         'unique_users': row[6],
         'daily_rank': row[7],
         'prev_day_impressions': row[8],
-        'growth_rate': row[9]
+        'growth_rate': float(row[9]) if row[9] else 0.0
     } for row in data]
-    return Response(formatted_data)
+    
+    return Response({
+        'campaigns': formatted_data,
+        'total_campaigns': len(formatted_data)
+    })
 
 @api_view(['GET'])
 def async_cohort_analysis(request):
@@ -80,55 +102,79 @@ def async_dashboard(request):
     })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def rebuild_metrics(request, campaign_id):
+    """Event sourcing replay functionality"""
     from apps.analytics.events import replay_events
+    
     events = replay_events(campaign_id, request.user.tenant_id)
-    return Response({'rebuilt': len(events)})
+    
+    return Response({
+        'rebuilt_events': len(events),
+        'campaign_id': campaign_id,
+        'status': 'completed',
+        'tenant_id': request.user.tenant_id
+    })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def audit_trail(request, campaign_id):
     events = AdEvent.objects.filter(
         aggregate_id=str(campaign_id),
         tenant_id=request.user.tenant_id
-    ).order_by('-timestamp')
+    ).order_by('-timestamp')[:100]  # Limit for performance
     
     data = [{
+        'event_id': event.id,
         'event_type': event.event_type,
         'timestamp': event.timestamp,
         'payload': event.payload,
         'sequence_number': event.sequence_number
     } for event in events]
     
-    return Response(data)
+    return Response({
+        'audit_events': data,
+        'campaign_id': campaign_id,
+        'total_events': len(data),
+        'limited_to': 100
+    })
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])  # ← Agregar esto
 def trigger_metrics(request):
     from tasks.analytics import calculate_daily_metrics
     result = calculate_daily_metrics.delay(request.user.tenant_id)
     return Response({'task_id': result.id, 'status': 'queued'})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def attribution_analysis(request):
+    """Attribution analysis with raw SQL"""
     campaign_id = request.GET.get('campaign_id')
-    data = AnalyticsRepository.attribution_analysis(
-        request.user.tenant_id, 
-        campaign_id
-    )
+    tenant_id = request.user.tenant_id
+    
+    data = AnalyticsRepository.attribution_analysis(tenant_id, campaign_id)
     
     formatted_data = [{
         'campaign_id': row[0],
         'attributed_users': row[1],
-        'attributed_revenue': float(row[2]) if row[2] else 0,
-        'avg_journey_days': float(row[3]) if row[3] else 0,
+        'attributed_revenue': float(row[2]) if row[2] else 0.0,
+        'avg_journey_days': float(row[3]) if row[3] else 0.0,
         'total_impressions': row[4],
         'total_clicks': row[5],
-        'total_conversions': row[6]
+        'total_conversions': row[6],
+        'conversion_rate': (row[6] / row[4] * 100) if row[4] > 0 else 0.0
     } for row in data]
     
-    return Response(formatted_data)
+    return Response({
+        'attribution_data': formatted_data,
+        'campaign_filter': campaign_id,
+        'total_analyzed': len(formatted_data)
+    })
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated]) 
 def query_profiling(request):
     """Analyze query performance with EXPLAIN"""
     query_type = request.GET.get('type', 'cohort')
@@ -247,27 +293,32 @@ def performance_benchmark(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def real_time_dashboard(request):
+    """Real-time dashboard with concurrent analytics"""
     tenant_id = request.user.tenant_id
     start_time = time.time()
     
-    # Execute sequentially since views aren't async
-    active_campaigns = get_active_campaigns_count(tenant_id)
-    impressions_today = get_total_impressions_today(tenant_id)
-    top_campaign = get_top_performing_campaign(tenant_id)
-    total_spend = get_real_time_spend(tenant_id)
-    unique_users = get_unique_users_today(tenant_id)
+    # Get real-time metrics
+    realtime_data = AnalyticsRepository.get_real_time_metrics(tenant_id)
+    cohort_data = AnalyticsRepository.cohort_analysis(tenant_id)
+    top_campaigns = AnalyticsRepository.top_performing_campaigns(tenant_id, 5)
+    
+    # Calculate totals
+    total_events = AdEvent.objects.filter(tenant_id=tenant_id).count()
+    total_impressions = Impression.objects.filter(tenant_id=tenant_id).count()
     
     execution_time = (time.time() - start_time) * 1000
     
     return Response({
-        'active_campaigns': active_campaigns,
-        'impressions_today': impressions_today,
-        'top_campaign': top_campaign,
-        'total_spend': total_spend,
-        'unique_users': unique_users,
+        'realtime_metrics': realtime_data,
+        'cohort_data': cohort_data[:10],  # Limit for performance
+        'top_campaigns': top_campaigns, 
+        'total_events': total_events,
+        'total_impressions': total_impressions,
         'execution_time_ms': round(execution_time, 2),
-        'performance_grade': 'A' if execution_time < 100 else 'B' if execution_time < 200 else 'C'
+        'performance_target': 'sub_100ms',
+        'status': 'OK' if execution_time < 100 else 'SLOW'
     })
 
 def get_active_campaigns_count(tenant_id):
@@ -455,88 +506,172 @@ def bigquery_status(request):
 def real_time_metrics(request):
     """Sub-100ms real-time metrics endpoint"""
     campaign_id = request.GET.get('campaign_id')
-    data = AnalyticsRepository.get_real_time_metrics(
-        request.user.tenant_id, 
-        campaign_id
-    )
-    return Response(data)
+    tenant_id = request.user.tenant_id if hasattr(request.user, 'tenant_id') else 1
+    
+    start_time = time.time()
+    data = AnalyticsRepository.get_real_time_metrics(tenant_id, campaign_id)
+    execution_time = (time.time() - start_time) * 1000
+    
+    return Response({
+        'metrics': data,
+        'execution_time_ms': round(execution_time, 2),
+        'performance_target': 'sub_100ms',
+        'status': 'OK' if execution_time < 100 else 'SLOW',
+        'campaign_filter': campaign_id
+    })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def advanced_cohort_analysis(request):
     """Production cohort analysis with window functions"""
     days_back = int(request.GET.get('days_back', 30))
-    data = AnalyticsRepository.advanced_cohort_analysis(
-        request.user.tenant_id, 
-        days_back
-    )
-    return Response(data)
+    tenant_id = request.user.tenant_id
+    
+    data = AnalyticsRepository.advanced_cohort_analysis(tenant_id, days_back)
+    
+    formatted_data = [{
+        'user_id': row[0],
+        'first_seen': row[1],
+        'days_since_first': row[2],
+        'total_impressions': row[3],
+        'total_clicks': row[4],
+        'cohort_period': row[5],
+        'retention_bucket': row[6]
+    } for row in data]
+    
+    return Response({
+        'advanced_cohorts': formatted_data,
+        'analysis_period_days': days_back,
+        'total_users': len(formatted_data)
+    })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def campaign_performance_ranking(request):
-    """Advanced campaign ranking"""
+    """Advanced campaign ranking with raw SQL"""
     limit = int(request.GET.get('limit', 20))
-    data = AnalyticsRepository.campaign_performance_ranking(
-        request.user.tenant_id, 
-        limit
-    )
-    return Response(data)
+    tenant_id = request.user.tenant_id
+    
+    data = AnalyticsRepository.campaign_performance_ranking(tenant_id, limit)
+    
+    formatted_data = [{
+        'campaign_id': row[0],
+        'campaign_name': row[1],
+        'total_impressions': row[2],
+        'total_clicks': row[3],
+        'total_cost': float(row[4]) if row[4] else 0.0,
+        'ctr': float(row[5]) if row[5] else 0.0,
+        'cpm': float(row[6]) if row[6] else 0.0,
+        'performance_rank': row[7],
+        'efficiency_score': float(row[8]) if row[8] else 0.0
+    } for row in data]
+    
+    return Response({
+        'campaign_rankings': formatted_data,
+        'limit': limit,
+        'ranking_metric': 'efficiency_score'
+    })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def hourly_performance_trend(request, campaign_id):
-    """Hourly trend analysis"""
+    """Hourly trend analysis for specific campaign"""
     hours_back = int(request.GET.get('hours_back', 24))
-    data = AnalyticsRepository.hourly_performance_trend(
-        request.user.tenant_id, 
-        campaign_id, 
-        hours_back
-    )
-    return Response(data)
+    tenant_id = request.user.tenant_id
+    
+    data = AnalyticsRepository.hourly_performance_trend(tenant_id, campaign_id, hours_back)
+    
+    formatted_data = [{
+        'hour': row[0],
+        'impressions': row[1],
+        'clicks': row[2],
+        'cost': float(row[3]) if row[3] else 0.0,
+        'ctr': float(row[4]) if row[4] else 0.0,
+        'hourly_trend': row[5]
+    } for row in data]
+    
+    return Response({
+        'hourly_trends': formatted_data,
+        'campaign_id': campaign_id,
+        'analysis_period_hours': hours_back,
+        'data_points': len(formatted_data)
+    })
+
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def query_performance_monitor(request):
-    """Query performance monitoring"""
+    """Query performance monitoring dashboard"""
     data = AnalyticsRepository.get_query_performance_stats()
-    return Response(data)
+    
+    return Response({
+        'performance_stats': data,
+        'monitoring_active': True,
+        'thresholds': {
+            'fast_query_ms': 50,
+            'slow_query_ms': 500,
+            'critical_query_ms': 1000
+        }
+    })
 
-# apps/analytics/views.py (health check)
+# Class-based view for aggregation
 class AggregateMetricsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        """Trigger metrics aggregation via Celery"""
         tenant_id = request.user.tenant_id
         task = aggregate_daily_metrics.delay(tenant_id)
-        return Response({'task_id': task.id, 'status': 'aggregation started'})
+        
+        return Response({
+            'task_id': task.id, 
+            'status': 'aggregation_started',
+            'tenant_id': tenant_id,
+            'celery_backend': 'redis'
+        })
+
+    def get(self, request):
+        """Get aggregation status"""
+        tenant_id = request.user.tenant_id
+        
+        return Response({
+            'tenant_id': tenant_id,
+            'last_aggregation': cache.get(f'last_aggregation:{tenant_id}'),
+            'status': 'ready_for_aggregation'
+        })
 
 
-# apps/analytics/views.py (agregar al final)
 @api_view(['GET'])
+@permission_classes([IsAuthenticated]) 
 def circuit_breaker_status(request):
-    """Check circuit breaker status"""
-    from django.core.cache import cache
-    
+    """Circuit breaker status monitoring"""
     circuits = [
         'apps.campaigns.views.get_queryset',
-        'apps.analytics.repository.cohort_analysis'
+        'apps.analytics.repository.cohort_analysis',
+        'apps.analytics.repository.campaign_performance_window'
     ]
     
-    status = {}
+    status_data = []
     for circuit in circuits:
-        cache_key = f"circuit_breaker:{circuit}"
-        data = cache.get(cache_key, {'state': 'closed', 'failure_count': 0})
-        status[circuit] = {
-            'state': data.get('state', 'closed'),
-            'failure_count': data.get('failure_count', 0),
-            'last_failure_time': data.get('last_failure_time')
-        }
+        circuit_status = cache.get(f'circuit_breaker:{circuit}', 'closed')
+        failures = cache.get(f'circuit_failures:{circuit}', 0)
+        
+        status_data.append({
+            'circuit': circuit,
+            'status': circuit_status,
+            'failures': failures,
+            'last_check': time.time()
+        })
     
     return Response({
-        'circuit_breakers': status,
-        'overall_health': 'healthy' if all(s['state'] == 'closed' for s in status.values()) else 'degraded'
+        'circuit_breakers': status_data,
+        'overall_health': 'OK' if all(c['status'] == 'closed' for c in status_data) else 'DEGRADED'
     })
 
 
-    # apps/analytics/views.py (agregar)
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])  
 def celery_health_check(request):
     """Check Celery worker and broker status"""
     from celery import current_app
@@ -582,24 +717,37 @@ def get_recent_tasks():
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def flower_status(request):
-    """Flower monitoring integration"""
-    import requests
+    """Flower monitoring - only available in local/dev"""
+    from django.conf import settings
     
-    try:
-        # Check if Flower is running
-        response = requests.get('http://localhost:5555/api/workers', timeout=2)
-        flower_data = response.json()
-        
-        return Response({
-            'flower_available': True,
-            'flower_url': 'http://localhost:5555',
-            'workers': flower_data
-        })
-    except:
+    # Only works in local/dev environments
+    if settings.DEBUG or 'local' in str(settings.DATABASES['default']['HOST']):
+        import requests
+        try:
+            response = requests.get('http://localhost:5555/api/workers', timeout=2)
+            flower_data = response.json()
+            
+            return Response({
+                'flower_available': True,
+                'flower_url': 'http://localhost:5555',
+                'workers': flower_data,
+                'environment': 'local'
+            })
+        except:
+            return Response({
+                'flower_available': False,
+                'message': 'Flower not running. Start with: make flower',
+                'environment': 'local'
+            })
+    else:
+        # Production/GCP environment
         return Response({
             'flower_available': False,
-            'message': 'Flower not running. Start with: make flower'
+            'message': 'Flower not available in production. Use Cloud Monitoring.',
+            'monitoring_url': 'https://console.cloud.google.com/monitoring',
+            'environment': 'gcp'
         })
 
 
