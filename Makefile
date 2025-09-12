@@ -527,6 +527,7 @@ gcp-deploy-django: check-env-prod
 	    --set-env-vars REDIS_HOST=$$REDIS_HOST \
 		--set-env-vars GS_BUCKET_NAME=$$GS_BUCKET_NAME \
 		--set-env-vars SECRET_KEY=$$SECRET_KEY \
+		--set-env-vars GCP_PROJECT_ID=$$PROJECT_ID \
 		--add-cloudsql-instances $$PROJECT_ID:$$REGION:$$MYSQL_INSTANCE \
 	    --vpc-connector=$$VPC_CONNECTOR_NAME \
 		--project $$PROJECT_ID \
@@ -630,3 +631,14 @@ test-bq-queries:
 	@echo "🔍 Testing BigQuery queries..."
 	@$(call LOAD_LOCAL_ENV); export DJANGO_SETTINGS_MODULE=core.settings.local; \
 	python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.local'); django.setup(); from apps.analytics.bigquery import BigQueryAnalytics; bq = BigQueryAnalytics(); print('✅ BigQuery analytics methods loaded'); print('✅ Cohort analysis query ready'); print('✅ Performance analysis query ready')"
+
+
+
+.PHONY: test-bigquery-gcp
+
+# Test BigQuery on GCP
+test-bigquery-gcp:
+	@echo "🌐 Testing BigQuery on deployed GCP..."
+	@chmod +x test_gcp_bigquery.sh
+	@./test_gcp_bigquery.sh
+

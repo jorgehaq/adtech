@@ -215,6 +215,16 @@ class BigQueryAnalytics:
     
     def get_sync_status(self, tenant_id: int) -> Dict[str, Any]:
         """Get BigQuery sync status"""
+        if self.mock_mode:
+            return {
+                "status": "mock_connected",
+                "total_rows": 50000,
+                "campaigns": 5,
+                "latest_timestamp": "2025-01-15T10:30:00",
+                "earliest_timestamp": "2025-01-01T00:00:00",
+                "tenant_id": tenant_id
+            }
+        
         # Check row counts
         query = f"""
         SELECT 
