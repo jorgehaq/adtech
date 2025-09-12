@@ -1,0 +1,106 @@
+name: CI/CD Pipeline
+on: 
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PROJECT_ID: adtech-backend-prod
+  REGION: us-central1
+  SERVICE_NAME: adtech-backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: adtech_test
+        ports:
+          - 3306:3306
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+          
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v2
+        
+      - name: Install dependencies
+        run: poetry install
+        
+      - name: Run tests
+        env:
+          DB_NAME: adtech_test
+          DB_USER: root
+          DB_PASSWORD: password
+          DB_HOST: 127.0.0.1
+          REDIS_HOST: localhost
+        run: |
+          poetry run python manage.py migrate --settings=core.settings.test
+          poetry run pytest -v
+
+  deploy-infrastructure:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Auth GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create .env.prod from secrets
+        run: |
+          cat > .env.prod << EOF
+          DEBUG=False
+          SECRET_KEY="${{ secrets.SECRET_KEY }}"
+          DB_NAME=adtech_prod
+          DB_USER=adtech_prod_user
+          DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+          DB_HOST=/cloudsql/$PROJECT_ID:$REGION:adtech-mysql
+          REDIS_HOST=10.0.1.11
+          PROJECT_ID=$PROJECT_ID
+          REGION=$REGION
+          MYSQL_INSTANCE=adtech-mysql
+          IMPRESSION_FUNCTION_NAME=process-impression-event
+          CLICK_FUNCTION_NAME=process-click-event
+          IMPRESSION_TOPIC=impressions-tenant-1
+          CLICK_TOPIC=clicks-tenant-1
+          GS_BUCKET_NAME=adtech-prod-static-files
+          VPC_CONNECTOR_NAME=adtech-vpc-connector
+          EOF
+        
+      - name: Setup GCP Infrastructure
+        run: |
+          make gcp-setup
+          make gcp-enable-apis
+          make gcp-create-sql
+          make gcp-create-storage
+          make gcp-create-vpc-connector
+          
+      - name: Deploy Cloud Functions
+        run: make deploy-functions
+        
+      - name: Deploy Django to Cloud Run
+        run: make gcp-deploy-django
+        
+      - name: Check Deployment Status
+        run: make gcp-status

@@ -668,3 +668,60 @@ test-bigquery-gcp:
 	@echo "🌐 Testing BigQuery on deployed GCP..."
 	@chmod +x test_gcp_bigquery.sh
 	@./test_gcp_bigquery.sh
+
+
+
+
+# ==============================================
+# GITHUB ACTIONS SETUP
+# ==============================================
+
+.PHONY: setup-github-actions create-service-account assign-permissions generate-key show-key
+
+# Complete GitHub Actions setup
+setup-github-actions: create-service-account assign-permissions generate-key show-key
+	@echo "🎯 GitHub Actions setup complete!"
+	@echo "📋 Next: Copy the JSON above to GitHub Secrets as 'GCP_CREDENTIALS'"
+
+# Create service account
+create-service-account:
+	@$(call LOAD_PROD_ENV); \
+	echo "👤 Creating GitHub Actions service account..."; \
+	gcloud iam service-accounts create github-actions \
+		--display-name="GitHub Actions CI/CD" \
+		--project=$$PROJECT_ID
+
+# Assign required permissions
+assign-permissions:
+	@$(call LOAD_PROD_ENV); \
+	echo "🔐 Assigning permissions..."; \
+	gcloud projects add-iam-policy-binding $$PROJECT_ID \
+		--member="serviceAccount:github-actions@$$PROJECT_ID.iam.gserviceaccount.com" \
+		--role="roles/cloudfunctions.admin"; \
+	gcloud projects add-iam-policy-binding $$PROJECT_ID \
+		--member="serviceAccount:github-actions@$$PROJECT_ID.iam.gserviceaccount.com" \
+		--role="roles/run.admin"; \
+	gcloud projects add-iam-policy-binding $$PROJECT_ID \
+		--member="serviceAccount:github-actions@$$PROJECT_ID.iam.gserviceaccount.com" \
+		--role="roles/storage.admin"
+
+# Generate JSON key
+generate-key:
+	@$(call LOAD_PROD_ENV); \
+	echo "🔑 Generating service account key..."; \
+	gcloud iam service-accounts keys create github-actions-key.json \
+		--iam-account=github-actions@$$PROJECT_ID.iam.gserviceaccount.com \
+		--project=$$PROJECT_ID
+
+# Show key for copying
+show-key:
+	@echo "📋 Copy this JSON to GitHub Secrets:"
+	@echo "=================================="
+	@cat github-actions-key.json
+	@echo "=================================="
+	@echo "⚠️  Delete this file after copying: rm github-actions-key.json"
+
+
+
+
+
