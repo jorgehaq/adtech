@@ -265,6 +265,19 @@ test-event-replay-endpoint:
 
 # ==============================================
 # TEST CIRCUIT BREAKER
+
+
+# ==============================================
+# LOAD TESTING (Locust)
+.PHONY: load-test
+load-test:
+	@echo "🚀 Starting Locust UI at http://localhost:8089 (target: $(or $(HOST),http://localhost:8070))"
+	locust -f locustfile.py --host=$(or $(HOST),http://localhost:8070)
+
+.PHONY: load-test-headless
+load-test-headless:
+	@echo "🏁 Running headless Locust: users=$(or $(U),25) rate=$(or $(R),5)/s time=$(or $(T),1m) host=$(or $(HOST),http://localhost:8070)"
+	locust -f locustfile.py --headless -u $(or $(U),25) -r $(or $(R),5) -t $(or $(T),1m) --host=$(or $(HOST),http://localhost:8070) --csv=$(or $(CSV),locust_out)
 # ==============================================
 
 # Test circuit breaker implementation
@@ -655,4 +668,3 @@ test-bigquery-gcp:
 	@echo "🌐 Testing BigQuery on deployed GCP..."
 	@chmod +x test_gcp_bigquery.sh
 	@./test_gcp_bigquery.sh
-
