@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 
 class Campaign(models.Model):
     class Meta:
+        app_label = 'campaigns'
         constraints = [
             models.UniqueConstraint(
                 fields=['tenant_id', 'name'],
@@ -58,6 +59,9 @@ class Campaign(models.Model):
         super().save(*args, **kwargs)
 
 class Ad(models.Model):
+    class Meta:
+        app_label = 'campaigns'
+    
     tenant_id = models.IntegerField(db_index=True)
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='ads')
     creative_url = models.URLField()
@@ -67,6 +71,7 @@ class Ad(models.Model):
 
 class Impression(models.Model):
     class Meta:
+        app_label = 'campaigns'
         indexes = [
             models.Index(fields=['tenant_id', 'timestamp']),
         ]

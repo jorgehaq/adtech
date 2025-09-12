@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from apps.events.views import rebuild_campaign_metrics
+from apps.analytics.views import AggregateMetricsView
 
 urlpatterns = [
     path('cohorts/', views.cohort_analysis, name='cohort_analysis'),
@@ -16,4 +17,16 @@ urlpatterns = [
     path('benchmark/', views.performance_benchmark, name='performance_benchmark'),
     path('realtime/dashboard/', views.real_time_dashboard, name='realtime_dashboard'),
     path('bid/simulate/', views.bid_processing_simulation, name='bid_simulation'),
+    path('realtime/metrics/', views.real_time_metrics, name='realtime_metrics'),
+    path('cohorts/advanced/', views.advanced_cohort_analysis, name='advanced_cohorts'),
+    path('campaigns/ranking/', views.campaign_performance_ranking, name='campaign_ranking'),
+    path('campaigns/<int:campaign_id>/hourly/', views.hourly_performance_trend, name='hourly_trend'),
+    path('performance/monitor/', views.query_performance_monitor, name='query_monitor'),
+    path('circuit-breaker/status/', views.circuit_breaker_status, name='circuit_status'),
+    path('aggregate/', AggregateMetricsView.as_view(), name='aggregate-metrics'),
+    path('celery/health/', views.celery_health_check, name='celery_health'),
+    path('celery/flower/', views.flower_status, name='flower_status'),
+    path('bigquery/', views.bigquery_analytics, name='bigquery_analytics'),
+    path('sync-bigquery/', views.sync_to_bigquery, name='sync_bigquery'),
+    path('bigquery/status/', views.bigquery_status, name='bigquery_status'),
 ]

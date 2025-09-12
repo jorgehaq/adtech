@@ -17,3 +17,6 @@ logs/
 hooks/
 objects/
 refs/git_log.txt
+ 
+# Ignore Locust load test CSV outputs
+locust_out*.csv

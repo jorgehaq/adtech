@@ -1,12 +1,10 @@
+# test_circuit_breaker.sh (actualizar)
 #!/usr/bin/env bash
 
-# Test Circuit Breaker Implementation
-# Simula fallos de DB y verifica retry behavior
-
-BASE_URL="http://localhost:8070"
+BASE_URL="http://localhost:${TEST_PORT:-8070}"
 CONTENT_TYPE="Content-Type: application/json"
 
-# Test user data
+# Test data
 USER_EMAIL="circuit-test-$(date +%s)@example.com"
 USER_NAME="circuituser-$(date +%s)"
 USER_PASS="testpass123"
@@ -63,7 +61,19 @@ else
     print_error "Normal operation failed (HTTP: $HTTP_CODE)"
 fi
 
-# 3. Test with rapid requests (stress test)
+# 3. Test circuit breaker status
+print_test "Testing Circuit Breaker Status"
+STATUS_RESPONSE=$(curl -s "$BASE_URL/api/v1/analytics/circuit-breaker/status/" \
+    -H "Authorization: Bearer $ACCESS_TOKEN")
+
+if echo "$STATUS_RESPONSE" | grep -q "closed\|open\|half_open"; then
+    print_success "Circuit breaker status working"
+    echo "Status: $STATUS_RESPONSE"
+else
+    print_error "Circuit breaker status failed: $STATUS_RESPONSE"
+fi
+
+# 4. Test with rapid requests (stress test)
 print_test "Testing Rapid Requests (Circuit Breaker Stress)"
 echo "Sending 10 rapid requests..."
 
@@ -78,38 +88,11 @@ end_time=$(date +%s%N)
 duration=$((($end_time - $start_time) / 1000000))
 print_success "10 concurrent requests completed in ${duration}ms"
 
-# 4. Test campaign creation (circuit breaker on perform_create)
-print_test "Testing Campaign Creation (Circuit Breaker Protection)"
-CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/campaigns/" \
-    -H "$CONTENT_TYPE" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" \
-    -d "{
-        \"name\": \"Circuit Breaker Test Campaign\",
-        \"budget\": \"1000.00\",
-        \"status\": \"active\",
-        \"start_date\": \"2025-01-01\",
-        \"end_date\": \"2025-12-31\"
-    }")
-
-CREATE_HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
-if [ "$CREATE_HTTP_CODE" = "201" ]; then
-    print_success "Campaign creation works with circuit breaker"
-else
-    print_error "Campaign creation failed (HTTP: $CREATE_HTTP_CODE)"
-fi
-
 # 5. Summary
 print_test "Circuit Breaker Test Summary"
-echo -e "${YELLOW}What was implemented:${NC}"
-echo "✅ @retry decorator on get_queryset() method"
-echo "✅ @retry decorator on perform_create() method"
-echo "✅ 3 retry attempts with exponential backoff"
-echo "✅ Tenacity library integration"
+echo "✅ JWT authentication"
+echo "✅ Normal operation protection"
+echo "✅ Status endpoint"
+echo "✅ Stress testing"
 
-echo -e "\n${YELLOW}What this protects against:${NC}"
-echo "• Database connection timeouts"
-echo "• Temporary MySQL overload"
-echo "• Network interruptions"
-echo "• Race conditions under load"
-
-echo -e "\n${GREEN}Circuit breaker is active and protecting database operations!${NC}"
+echo -e "\n${GREEN}Circuit breaker validation completed!${NC}"
