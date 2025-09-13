@@ -48,7 +48,7 @@ jobs:
           DB_HOST: 127.0.0.1
           REDIS_HOST: localhost
         run: |
-          poetry run python manage.py migrate --settings=core.settings.test
+          poetry run python manage.py migrate --settings=core.settings.local
           poetry run pytest -v
 
   deploy-infrastructure:
